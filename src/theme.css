@@ -1,0 +1,41 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+h1 {
+    text-align: center;
+}
+
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.gallery-item {
+    max-width: 200px;
+    max-height: 200px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+.gallery-item:hover {
+    border-color: red;
+}
+
+input[type="file"],
+button {
+    display: block;
+    margin: 20px auto;
+}
+
+progress {
+    width: 100%;
+    margin: 20px 0;
+    display: none;
+}

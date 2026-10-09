@@ -13,7 +13,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['better-sqlite3', 'sharp', 'adm-zip']
+              external: ['better-sqlite3', 'sharp', 'adm-zip', 'cheerio', 'undici']
             }
           }
         }

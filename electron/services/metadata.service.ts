@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { net } from 'electron';
 
 export interface WebsiteMetadata {
   url: string;
@@ -31,11 +32,12 @@ export class MetadataService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
 
-      const response = await fetch(url, {
+      const response = await net.fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 BookmarkManager/1.0',
         },
-        signal: controller.signal
+        signal: controller.signal,
+        cache: 'no-store'
       });
       
       clearTimeout(timeoutId);

@@ -1,7 +1,8 @@
 .DS_Store
 node_modules
 /dist
-
+/dist-electron
+/release
 
 # local env files
 .env.local

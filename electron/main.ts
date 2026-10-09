@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dbManager } from './database/db';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -61,7 +62,17 @@ app.on('activate', () => {
   }
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Initialize Database
+  try {
+    dbManager.getDb();
+  } catch (error) {
+    console.error('Failed to initialize database on startup:', error);
+  }
+  
+  createWindow();
+});
 
 // Example IPC handler to ensure secure bridge is working
 ipcMain.handle('ping', () => 'pong');
+

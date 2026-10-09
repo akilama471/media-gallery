@@ -1,6 +1,9 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerBookmarkController } from './controllers/bookmark.controller';
+import { protocol } from 'electron';
+import fs from 'node:fs';
 import { dbManager } from './database/db';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +72,25 @@ app.whenReady().then(() => {
   } catch (error) {
     console.error('Failed to initialize database on startup:', error);
   }
+
+  // Register custom protocol for local assets
+  protocol.handle('asset', (request) => {
+    // request.url is something like asset://thumb_abcd123.webp
+    const filename = request.url.slice('asset://'.length);
+    const assetPath = path.join(app.getPath('userData'), 'assets', filename);
+    
+    // Check if file exists, if not, return 404
+    if (!fs.existsSync(assetPath)) {
+      return new Response(null, { status: 404 });
+    }
+    
+    // Return file
+    const data = fs.readFileSync(assetPath);
+    return new Response(data);
+  });
+
+  // Register IPC Controllers
+  registerBookmarkController();
   
   createWindow();
 });

@@ -1,10 +1,12 @@
 import { ipcMain } from 'electron';
 import { bookmarkService } from '../services/bookmark.service';
 import { UpdateBookmarkDTO } from '../models/bookmark.model';
+import { passwordService } from '../services/password.service';
 
 export function registerBookmarkController() {
   ipcMain.handle('bookmarks:add', async (event, url: string) => {
     try {
+      passwordService.checkAuth();
       const bookmark = await bookmarkService.addBookmark(url);
       return { success: true, data: bookmark };
     } catch (error: any) {
@@ -14,6 +16,7 @@ export function registerBookmarkController() {
 
   ipcMain.handle('bookmarks:getAll', async () => {
     try {
+      passwordService.checkAuth();
       const bookmarks = bookmarkService.getAllBookmarks();
       return { success: true, data: bookmarks };
     } catch (error: any) {
@@ -23,6 +26,7 @@ export function registerBookmarkController() {
 
   ipcMain.handle('bookmarks:update', async (event, id: number, data: UpdateBookmarkDTO) => {
     try {
+      passwordService.checkAuth();
       const bookmark = bookmarkService.updateBookmark(id, data);
       return { success: true, data: bookmark };
     } catch (error: any) {
@@ -32,6 +36,7 @@ export function registerBookmarkController() {
 
   ipcMain.handle('bookmarks:delete', async (event, id: number) => {
     try {
+      passwordService.checkAuth();
       bookmarkService.deleteBookmark(id);
       return { success: true };
     } catch (error: any) {

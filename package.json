@@ -10,6 +10,7 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "adm-zip": "^0.6.1",
     "better-sqlite3": "^11.1.2",
     "cheerio": "^1.0.0",
     "clsx": "^2.1.1",
@@ -22,6 +23,7 @@
     "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",

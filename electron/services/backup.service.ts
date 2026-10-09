@@ -1,0 +1,107 @@
+import AdmZip from 'adm-zip';
+import path from 'node:path';
+import fs from 'node:fs';
+import { app } from 'electron';
+import { dbManager } from '../database/db';
+
+export class BackupService {
+  /**
+   * Exports the SQLite database and local assets directory into a ZIP file.
+   */
+  public async exportBackup(destinationPath: string): Promise<boolean> {
+    try {
+      const zip = new AdmZip();
+      const userDataPath = app.getPath('userData');
+      
+      const dbPath = path.join(userDataPath, 'bookmark_manager.sqlite');
+      const assetsPath = path.join(userDataPath, 'assets');
+
+      // Add database
+      if (fs.existsSync(dbPath)) {
+        zip.addLocalFile(dbPath, '');
+      }
+
+      // Add assets
+      if (fs.existsSync(assetsPath)) {
+        zip.addLocalFolder(assetsPath, 'assets');
+      }
+
+      // Write ZIP securely
+      zip.writeZip(destinationPath);
+      return true;
+    } catch (error) {
+      console.error('Backup export failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Imports a backup from a ZIP file safely.
+   */
+  public async importBackup(sourcePath: string): Promise<boolean> {
+    try {
+      const zip = new AdmZip(sourcePath);
+      const zipEntries = zip.getEntries();
+      
+      // Basic validation to prevent path traversal
+      for (const entry of zipEntries) {
+        if (entry.entryName.includes('..') || entry.entryName.startsWith('/')) {
+          throw new Error('Invalid archive: Path traversal detected.');
+        }
+      }
+
+      const userDataPath = app.getPath('userData');
+      const dbPath = path.join(userDataPath, 'bookmark_manager.sqlite');
+      const assetsPath = path.join(userDataPath, 'assets');
+
+      // For a production app, we should ideally extract to a temp dir, validate DB schema,
+      // and then merge or swap. For this implementation, we will perform a hard overwrite
+      // safely by extracting to temp, then moving.
+      
+      const tempExtractDir = path.join(userDataPath, 'temp_restore');
+      if (fs.existsSync(tempExtractDir)) {
+         fs.rmSync(tempExtractDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(tempExtractDir);
+
+      zip.extractAllTo(tempExtractDir, true);
+
+      // Verify if temp_restore has the DB
+      const tempDbPath = path.join(tempExtractDir, 'bookmark_manager.sqlite');
+      if (!fs.existsSync(tempDbPath)) {
+        throw new Error('Invalid archive: Missing database file.');
+      }
+
+      // It's safe, now we swap
+      // We must close the current DB connection first.
+      // (Normally better-sqlite3 doesn't have an explicit close if we just swap, 
+      // but it's safer to not hold file locks if possible). Let's assume we can just replace the file and reload.
+      
+      dbManager.getDb().close();
+
+      fs.copyFileSync(tempDbPath, dbPath);
+      
+      const tempAssetsPath = path.join(tempExtractDir, 'assets');
+      if (fs.existsSync(tempAssetsPath)) {
+        if (fs.existsSync(assetsPath)) {
+           fs.rmSync(assetsPath, { recursive: true, force: true });
+        }
+        fs.renameSync(tempAssetsPath, assetsPath);
+      }
+
+      // Clean up temp
+      fs.rmSync(tempExtractDir, { recursive: true, force: true });
+
+      // Restart app to reload database state properly
+      app.relaunch();
+      app.exit(0);
+      
+      return true;
+    } catch (error) {
+      console.error('Backup import failed:', error);
+      throw error;
+    }
+  }
+}
+
+export const backupService = new BackupService();

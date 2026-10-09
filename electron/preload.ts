@@ -8,6 +8,16 @@ export const electronAPI = {
     getAll: () => ipcRenderer.invoke('bookmarks:getAll'),
     update: (id: number, data: any) => ipcRenderer.invoke('bookmarks:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('bookmarks:delete', id)
+  },
+  auth: {
+    hasPassword: () => ipcRenderer.invoke('auth:hasPassword'),
+    setPassword: (password: string) => ipcRenderer.invoke('auth:setPassword', password),
+    verifyPassword: (password: string) => ipcRenderer.invoke('auth:verifyPassword', password),
+    lock: () => ipcRenderer.invoke('auth:lock')
+  },
+  backup: {
+    export: () => ipcRenderer.invoke('backup:export'),
+    import: () => ipcRenderer.invoke('backup:import')
   }
 };
 

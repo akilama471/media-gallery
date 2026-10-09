@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { registerBookmarkController } from './controllers/bookmark.controller';
 import { protocol } from 'electron';
 import fs from 'node:fs';
+import { registerAuthController } from './controllers/auth.controller';
+import { registerBackupController } from './controllers/backup.controller';
 import { dbManager } from './database/db';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -90,7 +92,9 @@ app.whenReady().then(() => {
   });
 
   // Register IPC Controllers
+  registerAuthController();
   registerBookmarkController();
+  registerBackupController();
   
   createWindow();
 });

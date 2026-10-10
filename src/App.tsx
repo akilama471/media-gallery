@@ -3,9 +3,11 @@ import { Sidebar } from './components/ui/Sidebar';
 import { BookmarkCard } from './components/bookmarks/BookmarkCard';
 import { BookmarkDetailsModal } from './components/bookmarks/BookmarkDetailsModal';
 import { DomainsView } from './components/domains/DomainsView';
+import { TagsView } from './components/tags/TagsView';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useDomains } from './hooks/useDomains';
-import { Bookmark, Domain } from './types/models';
+import { useTags } from './hooks/useTags';
+import { Bookmark, Domain, Tag } from './types/models';
 import { Plus, Search, Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -15,13 +17,23 @@ const App: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
+  const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const [filteredTagBookmarkIds, setFilteredTagBookmarkIds] = useState<number[]>([]);
 
   const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite, toggleImportant, updateBookmark } = useBookmarks();
   const { domains, loading: domainsLoading } = useDomains();
+  const { tags, loading: tagsLoading, createTag, renameTag, deleteTag, getBookmarkIds } = useTags();
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
     setSelectedDomain(null);
+    setSelectedTag(null);
+  };
+
+  const handleSelectTag = async (tag: Tag) => {
+    const ids = await getBookmarkIds(tag.id);
+    setFilteredTagBookmarkIds(ids);
+    setSelectedTag(tag);
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -38,6 +50,7 @@ const App: React.FC = () => {
     if (currentTab === 'favorites' && !b.is_favorite) return false;
     if (currentTab === 'important' && !b.is_important) return false;
     if (selectedDomain && b.domain_id !== selectedDomain.id) return false;
+    if (selectedTag && !filteredTagBookmarkIds.includes(b.id)) return false;
     if (searchQuery) {
       const lowerQ = searchQuery.toLowerCase();
       return (
@@ -102,20 +115,40 @@ const App: React.FC = () => {
                 onSelectDomain={setSelectedDomain} 
               />
             </>
+          ) : currentTab === 'tags' && !selectedTag ? (
+            <>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Tags</h2>
+                <p className="text-gray-500">
+                  {tags.length} {tags.length === 1 ? 'tag' : 'tags'} found
+                </p>
+              </div>
+              <TagsView 
+                tags={tags} 
+                loading={tagsLoading} 
+                onSelectTag={handleSelectTag}
+                onCreateTag={createTag}
+                onRenameTag={renameTag}
+                onDeleteTag={deleteTag}
+              />
+            </>
           ) : (
             <>
               <div className="mb-6 flex items-center gap-4">
-                {selectedDomain && (
+                {(selectedDomain || selectedTag) && (
                   <button 
-                    onClick={() => setSelectedDomain(null)}
+                    onClick={() => {
+                      if (selectedDomain) setSelectedDomain(null);
+                      if (selectedTag) setSelectedTag(null);
+                    }}
                     className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
                   >
-                    ← Back to Domains
+                    ← Back to {selectedDomain ? 'Domains' : 'Tags'}
                   </button>
                 )}
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                    {selectedDomain ? selectedDomain.domain : (currentTab === 'all' ? 'All Bookmarks' : currentTab)}
+                    {selectedDomain ? selectedDomain.domain : (selectedTag ? `#${selectedTag.name}` : (currentTab === 'all' ? 'All Bookmarks' : currentTab))}
                   </h2>
                   <p className="text-gray-500">
                     {filteredBookmarks.length} {filteredBookmarks.length === 1 ? 'bookmark' : 'bookmarks'} found

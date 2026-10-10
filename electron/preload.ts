@@ -12,6 +12,15 @@ export const electronAPI = {
   domains: {
     getAll: () => ipcRenderer.invoke('domains:getAll')
   },
+  tags: {
+    getAll: () => ipcRenderer.invoke('tags:getAll'),
+    create: (name: string) => ipcRenderer.invoke('tags:create', name),
+    rename: (id: number, newName: string) => ipcRenderer.invoke('tags:rename', id, newName),
+    delete: (id: number) => ipcRenderer.invoke('tags:delete', id),
+    getForBookmark: (bookmarkId: number) => ipcRenderer.invoke('tags:getForBookmark', bookmarkId),
+    setForBookmark: (bookmarkId: number, tagNames: string[]) => ipcRenderer.invoke('tags:setForBookmark', bookmarkId, tagNames),
+    getBookmarkIds: (tagId: number) => ipcRenderer.invoke('tags:getBookmarkIds', tagId)
+  },
   auth: {
     hasPassword: () => ipcRenderer.invoke('auth:hasPassword'),
     setPassword: (password: string) => ipcRenderer.invoke('auth:setPassword', password),

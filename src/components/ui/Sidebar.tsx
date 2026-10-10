@@ -23,7 +23,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       <div className="p-6">
         <h1 className="text-xl font-bold flex items-center gap-2 text-blue-400">
           <Bookmark className="w-6 h-6" />
-          Bookmark Manager
+          LinkVault
         </h1>
       </div>
       

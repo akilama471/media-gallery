@@ -1,7 +1,7 @@
 {
-  "name": "bookmark-manager",
+  "name": "linkvault",
   "version": "1.0.0",
-  "description": "Offline-first Bookmark Manager Desktop Application",
+  "description": "Offline-first LinkVault Desktop Application",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

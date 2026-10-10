@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Bookmark, Tag } from '../../types/models';
-import { X, Save, Hash } from 'lucide-react';
+import { Bookmark, Tag, Collection } from '../../types/models';
+import { X, Save, Hash, Folder } from 'lucide-react';
 
 interface BookmarkDetailsModalProps {
   bookmark: Bookmark;
@@ -19,8 +19,12 @@ export const BookmarkDetailsModal: React.FC<BookmarkDetailsModalProps> = ({ book
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [tagInput, setTagInput] = useState('');
 
+  const [bookmarkCols, setBookmarkCols] = useState<Collection[]>([]);
+  const [availableCols, setAvailableCols] = useState<Collection[]>([]);
+  const [colInput, setColInput] = useState('');
+
   React.useEffect(() => {
-    // Fetch available tags and current bookmark tags
+    // Fetch available tags, cols and current bookmark tags, cols
     const fetchTags = async () => {
       try {
         // @ts-ignore
@@ -28,10 +32,17 @@ export const BookmarkDetailsModal: React.FC<BookmarkDetailsModalProps> = ({ book
         // @ts-ignore
         const bookmarkTagsRes = await window.electronAPI.tags.getForBookmark(bookmark.id);
         
+        // @ts-ignore
+        const allColsRes = await window.electronAPI.collections.getAll();
+        // @ts-ignore
+        const bookmarkColsRes = await window.electronAPI.collections.getForBookmark(bookmark.id);
+        
         if (allTagsRes.success) setAvailableTags(allTagsRes.data);
         if (bookmarkTagsRes.success) setBookmarkTags(bookmarkTagsRes.data);
+        if (allColsRes.success) setAvailableCols(allColsRes.data);
+        if (bookmarkColsRes.success) setBookmarkCols(bookmarkColsRes.data);
       } catch (err) {
-        console.error('Failed to fetch tags', err);
+        console.error('Failed to fetch tags/collections', err);
       }
     };
     fetchTags();
@@ -69,17 +80,49 @@ export const BookmarkDetailsModal: React.FC<BookmarkDetailsModalProps> = ({ book
     setBookmarkTags(bookmarkTags.filter(t => t.id !== tagId));
   };
 
+  const handleAddCol = async (e: React.FormEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    const name = colInput.trim();
+    if (!name) return;
+
+    if (bookmarkCols.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+      setColInput('');
+      return;
+    }
+
+    try {
+      // @ts-ignore
+      const result = await window.electronAPI.collections.create(name);
+      if (result.success) {
+        setBookmarkCols([...bookmarkCols, result.data]);
+        
+        if (!availableCols.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+          setAvailableCols([...availableCols, result.data]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setColInput('');
+  };
+
+  const handleRemoveCol = (colId: number) => {
+    setBookmarkCols(bookmarkCols.filter(c => c.id !== colId));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     await onSave(bookmark.id, { title, url, description, notes });
     
-    // Save tags
+    // Save tags and collections
     try {
       // @ts-ignore
       await window.electronAPI.tags.setForBookmark(bookmark.id, bookmarkTags.map(t => t.name));
+      // @ts-ignore
+      await window.electronAPI.collections.setForBookmark(bookmark.id, bookmarkCols.map(c => c.name));
     } catch (err) {
-      console.error('Failed to save tags', err);
+      console.error('Failed to save tags/collections', err);
     }
 
     setSaving(false);
@@ -166,6 +209,45 @@ export const BookmarkDetailsModal: React.FC<BookmarkDetailsModalProps> = ({ book
               <datalist id="available-tags">
                 {availableTags.map(tag => (
                   <option key={tag.id} value={tag.name} />
+                ))}
+              </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Collections</label>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {bookmarkCols.map(col => (
+                  <span key={col.id} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-sm border border-indigo-200">
+                    <Folder className="w-3 h-3" />
+                    {col.name}
+                    <button type="button" onClick={() => handleRemoveCol(col.id)} className="text-indigo-400 hover:text-indigo-800 ml-1">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={colInput}
+                  onChange={(e) => setColInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' ? handleAddCol(e) : null}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Add to collection..."
+                  list="available-cols"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCol}
+                  disabled={!colInput.trim()}
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <datalist id="available-cols">
+                {availableCols.map(col => (
+                  <option key={col.id} value={col.name} />
                 ))}
               </datalist>
             </div>

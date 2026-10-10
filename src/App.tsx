@@ -4,13 +4,15 @@ import { BookmarkCard } from './components/bookmarks/BookmarkCard';
 import { BookmarkDetailsModal } from './components/bookmarks/BookmarkDetailsModal';
 import { DomainsView } from './components/domains/DomainsView';
 import { TagsView } from './components/tags/TagsView';
+import { CollectionsView } from './components/collections/CollectionsView';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { SettingsView } from './components/settings/SettingsView';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useDomains } from './hooks/useDomains';
 import { useTags } from './hooks/useTags';
+import { useCollections } from './hooks/useCollections';
 import { useAuth } from './hooks/useAuth';
-import { Bookmark, Domain, Tag } from './types/models';
+import { Bookmark, Domain, Tag, Collection } from './types/models';
 import { Plus, Search, Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -21,12 +23,15 @@ const App: React.FC = () => {
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [filteredTagBookmarkIds, setFilteredTagBookmarkIds] = useState<number[]>([]);
+  const [filteredColBookmarkIds, setFilteredColBookmarkIds] = useState<number[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'title-asc' | 'title-desc'>('newest');
 
   const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite, toggleImportant, updateBookmark, refresh } = useBookmarks();
   const { domains, loading: domainsLoading } = useDomains();
-  const { tags, loading: tagsLoading, createTag, renameTag, deleteTag, getBookmarkIds } = useTags();
+  const { tags, loading: tagsLoading, createTag, renameTag, deleteTag, getBookmarkIds: getTagBookmarkIds } = useTags();
+  const { collections, loading: colsLoading, createCollection, renameCollection, deleteCollection, getBookmarkIds: getColBookmarkIds } = useCollections();
   const { hasPassword, isAuthenticated, loading: authLoading, verifyPassword, setPassword } = useAuth();
 
   React.useEffect(() => {
@@ -40,12 +45,19 @@ const App: React.FC = () => {
     setCurrentTab(tab);
     setSelectedDomain(null);
     setSelectedTag(null);
+    setSelectedCollection(null);
   };
 
   const handleSelectTag = async (tag: Tag) => {
-    const ids = await getBookmarkIds(tag.id);
+    const ids = await getTagBookmarkIds(tag.id);
     setFilteredTagBookmarkIds(ids);
     setSelectedTag(tag);
+  };
+
+  const handleSelectCollection = async (col: Collection) => {
+    const ids = await getColBookmarkIds(col.id);
+    setFilteredColBookmarkIds(ids);
+    setSelectedCollection(col);
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -63,6 +75,7 @@ const App: React.FC = () => {
     if (currentTab === 'important' && !b.is_important) return false;
     if (selectedDomain && b.domain_id !== selectedDomain.id) return false;
     if (selectedTag && !filteredTagBookmarkIds.includes(b.id)) return false;
+    if (selectedCollection && !filteredColBookmarkIds.includes(b.id)) return false;
     return true;
   });
 
@@ -156,6 +169,23 @@ const App: React.FC = () => {
                 onDeleteTag={deleteTag}
               />
             </>
+          ) : currentTab === 'collections' && !selectedCollection ? (
+            <>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Collections</h2>
+                <p className="text-gray-500">
+                  {collections.length} {collections.length === 1 ? 'collection' : 'collections'} found
+                </p>
+              </div>
+              <CollectionsView 
+                collections={collections} 
+                loading={colsLoading} 
+                onSelectCollection={handleSelectCollection}
+                onCreateCollection={createCollection}
+                onRenameCollection={renameCollection}
+                onDeleteCollection={deleteCollection}
+              />
+            </>
           ) : currentTab === 'settings' ? (
             <SettingsView 
               hasPassword={hasPassword} 
@@ -165,20 +195,21 @@ const App: React.FC = () => {
             <>
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  {(selectedDomain || selectedTag) && (
+                  {(selectedDomain || selectedTag || selectedCollection) && (
                     <button 
                       onClick={() => {
                         if (selectedDomain) setSelectedDomain(null);
                         if (selectedTag) setSelectedTag(null);
+                        if (selectedCollection) setSelectedCollection(null);
                       }}
                       className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
                     >
-                      ← Back to {selectedDomain ? 'Domains' : 'Tags'}
+                      ← Back to {selectedDomain ? 'Domains' : (selectedTag ? 'Tags' : 'Collections')}
                     </button>
                   )}
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                      {selectedDomain ? selectedDomain.domain : (selectedTag ? `#${selectedTag.name}` : (currentTab === 'all' ? 'All Bookmarks' : currentTab))}
+                      {selectedDomain ? selectedDomain.domain : (selectedTag ? `#${selectedTag.name}` : (selectedCollection ? selectedCollection.name : (currentTab === 'all' ? 'All Bookmarks' : currentTab)))}
                     </h2>
                     <p className="text-gray-500">
                       {sortedBookmarks.length} {sortedBookmarks.length === 1 ? 'bookmark' : 'bookmarks'} found

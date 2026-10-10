@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { registerBookmarkController } from './controllers/bookmark.controller';
 import { registerDomainController } from './controllers/domain.controller';
 import { registerTagController } from './controllers/tag.controller';
+import { registerCollectionController } from './controllers/collection.controller';
 import { protocol } from 'electron';
 import fs from 'node:fs';
 import { registerAuthController } from './controllers/auth.controller';
@@ -98,6 +99,7 @@ app.whenReady().then(() => {
   registerBookmarkController();
   registerDomainController();
   registerTagController();
+  registerCollectionController();
   registerBackupController();
   
   createWindow();

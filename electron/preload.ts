@@ -22,6 +22,15 @@ export const electronAPI = {
     setForBookmark: (bookmarkId: number, tagNames: string[]) => ipcRenderer.invoke('tags:setForBookmark', bookmarkId, tagNames),
     getBookmarkIds: (tagId: number) => ipcRenderer.invoke('tags:getBookmarkIds', tagId)
   },
+  collections: {
+    getAll: () => ipcRenderer.invoke('collections:getAll'),
+    create: (name: string, description?: string) => ipcRenderer.invoke('collections:create', name, description),
+    rename: (id: number, newName: string, description?: string) => ipcRenderer.invoke('collections:rename', id, newName, description),
+    delete: (id: number) => ipcRenderer.invoke('collections:delete', id),
+    getForBookmark: (bookmarkId: number) => ipcRenderer.invoke('collections:getForBookmark', bookmarkId),
+    setForBookmark: (bookmarkId: number, colNames: string[]) => ipcRenderer.invoke('collections:setForBookmark', bookmarkId, colNames),
+    getBookmarkIds: (collectionId: number) => ipcRenderer.invoke('collections:getBookmarkIds', collectionId)
+  },
   auth: {
     hasPassword: () => ipcRenderer.invoke('auth:hasPassword'),
     setPassword: (password: string) => ipcRenderer.invoke('auth:setPassword', password),

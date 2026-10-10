@@ -5,6 +5,7 @@ node_modules
 /release
 
 # local env files
+.env
 .env.local
 .env.*.local
 
@@ -22,3 +23,4 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+*.code-workspace

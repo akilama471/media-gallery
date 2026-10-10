@@ -4,9 +4,12 @@ import { BookmarkCard } from './components/bookmarks/BookmarkCard';
 import { BookmarkDetailsModal } from './components/bookmarks/BookmarkDetailsModal';
 import { DomainsView } from './components/domains/DomainsView';
 import { TagsView } from './components/tags/TagsView';
+import { LoginScreen } from './components/auth/LoginScreen';
+import { SettingsView } from './components/settings/SettingsView';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useDomains } from './hooks/useDomains';
 import { useTags } from './hooks/useTags';
+import { useAuth } from './hooks/useAuth';
 import { Bookmark, Domain, Tag } from './types/models';
 import { Plus, Search, Loader2 } from 'lucide-react';
 
@@ -24,6 +27,7 @@ const App: React.FC = () => {
   const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite, toggleImportant, updateBookmark, refresh } = useBookmarks();
   const { domains, loading: domainsLoading } = useDomains();
   const { tags, loading: tagsLoading, createTag, renameTag, deleteTag, getBookmarkIds } = useTags();
+  const { hasPassword, isAuthenticated, loading: authLoading, verifyPassword, setPassword } = useAuth();
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -69,6 +73,18 @@ const App: React.FC = () => {
     if (sortOrder === 'title-desc') return (b.title || b.url).localeCompare(a.title || a.url);
     return 0;
   });
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen bg-gray-50 items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen onVerify={verifyPassword} />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
@@ -140,6 +156,11 @@ const App: React.FC = () => {
                 onDeleteTag={deleteTag}
               />
             </>
+          ) : currentTab === 'settings' ? (
+            <SettingsView 
+              hasPassword={hasPassword} 
+              onSetPassword={setPassword} 
+            />
           ) : (
             <>
               <div className="mb-6 flex items-center justify-between">

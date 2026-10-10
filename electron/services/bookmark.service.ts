@@ -10,6 +10,10 @@ export class BookmarkService {
    * Adds a new bookmark by scraping its URL for metadata and downloading assets.
    */
   public async addBookmark(url: string): Promise<Bookmark> {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      throw new Error('Invalid URL: Must start with http:// or https://');
+    }
+
     // 1. Check if it already exists
     const existing = bookmarkModel.findByUrl(url);
     if (existing) {

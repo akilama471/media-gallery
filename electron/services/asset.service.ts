@@ -89,10 +89,12 @@ export class AssetService {
             outStream.on('finish', () => resolve());
             outStream.on('error', (err) => {
               req.destroy();
+              fs.unlink(fullPath).catch(() => {});
               reject(err);
             });
             transform.on('error', (err) => {
               req.destroy();
+              fs.unlink(fullPath).catch(() => {});
               reject(err);
             });
           });

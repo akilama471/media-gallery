@@ -57,6 +57,13 @@ function createWindow() {
 
   // Hide menu bar by default for a modern look
   win.setMenuBarVisibility(false);
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http')) {
+      import('electron').then(({ shell }) => shell.openExternal(url));
+    }
+    return { action: 'deny' };
+  });
 }
 
 app.on('window-all-closed', () => {

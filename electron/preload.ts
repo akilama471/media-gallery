@@ -9,6 +9,9 @@ export const electronAPI = {
     update: (id: number, data: any) => ipcRenderer.invoke('bookmarks:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('bookmarks:delete', id)
   },
+  domains: {
+    getAll: () => ipcRenderer.invoke('domains:getAll')
+  },
   auth: {
     hasPassword: () => ipcRenderer.invoke('auth:hasPassword'),
     setPassword: (password: string) => ipcRenderer.invoke('auth:setPassword', password),

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerBookmarkController } from './controllers/bookmark.controller';
+import { registerDomainController } from './controllers/domain.controller';
 import { protocol } from 'electron';
 import fs from 'node:fs';
 import { registerAuthController } from './controllers/auth.controller';
@@ -94,6 +95,7 @@ app.whenReady().then(() => {
   // Register IPC Controllers
   registerAuthController();
   registerBookmarkController();
+  registerDomainController();
   registerBackupController();
   
   createWindow();

@@ -9,9 +9,9 @@ import { Search } from 'lucide-react';
 interface DomainsPageProps {
   bookmarks: Bookmark[];
   onDeleteBookmark: (id: number) => void;
-  onToggleFavorite: (id: number) => void;
-  onToggleImportant: (id: number) => void;
-  onUpdateBookmark: (id: number, data: any) => void;
+  onToggleFavorite: (id: number, current: boolean) => void;
+  onToggleImportant: (id: number, current: boolean) => void;
+  onUpdateBookmark: (id: number, data: Partial<Bookmark>) => void;
 }
 
 export const DomainsPage: React.FC<DomainsPageProps> = ({ 

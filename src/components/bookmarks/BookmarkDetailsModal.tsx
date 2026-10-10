@@ -9,7 +9,7 @@ import { CollectionSelector } from './CollectionSelector';
 interface BookmarkDetailsModalProps {
   bookmark: Bookmark;
   onClose: () => void;
-  onSave: (id: number, data: Partial<Bookmark>) => Promise<void>;
+  onSave: (id: number, data: Partial<Bookmark>) => any;
 }
 
 export const BookmarkDetailsModal: React.FC<BookmarkDetailsModalProps> = ({ bookmark, onClose, onSave }) => {

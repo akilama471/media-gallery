@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, Star, LayoutGrid, Hash, Folder, Settings, Globe } from 'lucide-react';
+import { Bookmark, Star, LayoutGrid, Hash, Folder, Settings, Globe, Activity } from 'lucide-react';
 import clsx from 'clsx';
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
     { id: 'domains', label: 'Websites', icon: Globe },
     { id: 'collections', label: 'Collections', icon: Folder },
     { id: 'tags', label: 'Tags', icon: Hash },
+    { id: 'jobs', label: 'Background Jobs', icon: Activity },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

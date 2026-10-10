@@ -9,9 +9,9 @@ interface BookmarksPageProps {
   bookmarks: Bookmark[];
   loading: boolean;
   onDeleteBookmark: (id: number) => void;
-  onToggleFavorite: (id: number) => void;
-  onToggleImportant: (id: number) => void;
-  onUpdateBookmark: (id: number, data: any) => void;
+  onToggleFavorite: (id: number, current: boolean) => void;
+  onToggleImportant: (id: number, current: boolean) => void;
+  onUpdateBookmark: (id: number, data: Partial<Bookmark>) => void;
 }
 
 export const BookmarksPage: React.FC<BookmarksPageProps> = ({ 

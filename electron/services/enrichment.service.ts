@@ -3,10 +3,58 @@ import { metadataService } from './metadata.service';
 import { domainService } from './domain.service';
 import { assetService } from './asset.service';
 import { dbManager } from '../database/db';
-import { webContents } from 'electron';
+import { webContents, ipcMain } from 'electron';
+
+export interface JobLog {
+  id: number;
+  timestamp: string;
+  bookmarkId: number;
+  url: string;
+  status: 'processing' | 'success' | 'error';
+  message: string;
+}
 
 class EnrichmentService {
   private isProcessing = false;
+  private logs: JobLog[] = [];
+  private logCounter = 0;
+
+  constructor() {
+    ipcMain.handle('jobs:getEnrichmentLogs', () => {
+      return this.logs;
+    });
+  }
+
+  private addLog(bookmarkId: number, url: string, status: 'processing' | 'success' | 'error', message: string) {
+    const log: JobLog = {
+      id: ++this.logCounter,
+      timestamp: new Date().toISOString(),
+      bookmarkId,
+      url,
+      status,
+      message
+    };
+    
+    // Update existing processing log if it exists for this bookmark
+    if (status !== 'processing') {
+      const existingIdx = this.logs.findIndex(l => l.bookmarkId === bookmarkId && l.status === 'processing');
+      if (existingIdx !== -1) {
+        this.logs[existingIdx] = { ...this.logs[existingIdx], status, message, timestamp: log.timestamp };
+      } else {
+        this.logs.unshift(log);
+      }
+    } else {
+      this.logs.unshift(log);
+    }
+    
+    if (this.logs.length > 200) {
+      this.logs.pop(); // Keep only last 200
+    }
+
+    webContents.getAllWebContents().forEach(wc => {
+      wc.send('jobs:logs-updated');
+    });
+  }
 
   public async startEnrichmentJob() {
     if (this.isProcessing) return;
@@ -27,7 +75,9 @@ class EnrichmentService {
 
         for (const bookmark of pendingBookmarks) {
           try {
-            console.log(`[Enrichment Job] Enriching bookmark ${bookmark.id}: ${bookmark.url}`);
+            const msg = `Enriching bookmark ${bookmark.id}...`;
+            console.log(`[Enrichment Job] ${msg} : ${bookmark.url}`);
+            this.addLog(bookmark.id, bookmark.url, 'processing', msg);
             
             // Wait 2 seconds before making network requests to avoid IP bans / Rate Limits
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -62,8 +112,11 @@ class EnrichmentService {
               wc.send('bookmarks:updated');
             });
 
-          } catch (error) {
+            this.addLog(bookmark.id, bookmark.url, 'success', 'Successfully enriched title, description, and thumbnail.');
+
+          } catch (error: any) {
             console.error(`[Enrichment Job] Failed to enrich bookmark ${bookmark.id} (${bookmark.url}):`, error);
+            this.addLog(bookmark.id, bookmark.url, 'error', error?.message || 'Failed to enrich metadata');
             
             // On failure, clear the pending flag so we don't loop infinitely
             bookmarkModel.update(bookmark.id, { thumbnail_path: null });

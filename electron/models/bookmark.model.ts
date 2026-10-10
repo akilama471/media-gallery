@@ -16,6 +16,9 @@ export interface UpdateBookmarkDTO {
   is_favorite?: boolean;
   is_important?: boolean;
   notes?: string | null;
+  domain_id?: number | null;
+  thumbnail_path?: string | null;
+  preview_path?: string | null;
 }
 
 export class BookmarkModel {
@@ -64,6 +67,9 @@ export class BookmarkModel {
     if (data.is_favorite !== undefined) { updates.push('is_favorite = ?'); values.push(data.is_favorite ? 1 : 0); }
     if (data.is_important !== undefined) { updates.push('is_important = ?'); values.push(data.is_important ? 1 : 0); }
     if (data.notes !== undefined) { updates.push('notes = ?'); values.push(data.notes); }
+    if (data.domain_id !== undefined) { updates.push('domain_id = ?'); values.push(data.domain_id); }
+    if (data.thumbnail_path !== undefined) { updates.push('thumbnail_path = ?'); values.push(data.thumbnail_path); }
+    if (data.preview_path !== undefined) { updates.push('preview_path = ?'); values.push(data.preview_path); }
     
     if (updates.length === 0) return this.findById(id)!;
 

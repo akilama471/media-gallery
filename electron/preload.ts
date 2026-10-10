@@ -51,7 +51,15 @@ export const electronAPI = {
       const listener = () => callback();
       ipcRenderer.on('bookmarks:updated', listener);
       return () => ipcRenderer.removeListener('bookmarks:updated', listener);
+    },
+    onJobsUpdated: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('jobs:logs-updated', listener);
+      return () => ipcRenderer.removeListener('jobs:logs-updated', listener);
     }
+  },
+  jobs: {
+    getEnrichmentLogs: () => ipcRenderer.invoke('jobs:getEnrichmentLogs')
   }
 };
 

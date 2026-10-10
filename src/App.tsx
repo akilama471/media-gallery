@@ -6,6 +6,7 @@ import { TagsPage } from './pages/TagsPage';
 import { CollectionsPage } from './pages/CollectionsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
+import { JobsPage } from './pages/JobsPage';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useAuth } from './hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -117,6 +118,10 @@ const App: React.FC = () => {
               onSetPassword={setPassword}
               onRefreshAll={refreshAllData}
             />
+          )}
+
+          {currentTab === 'jobs' && (
+            <JobsPage />
           )}
     </MainLayout>
   );

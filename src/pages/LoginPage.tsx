@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 
-interface LoginScreenProps {
+interface LoginPageProps {
   onVerify: (password: string) => Promise<boolean>;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onVerify }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onVerify }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);

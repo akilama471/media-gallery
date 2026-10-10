@@ -55,6 +55,12 @@ export class BookmarkService {
     return bookmarkModel.getAll();
   }
 
+  public searchBookmarks(query: string): Bookmark[] {
+    // Add wildcards for partial matching in FTS5
+    const ftsQuery = query.trim().split(/\s+/).map(word => `"${word}"*`).join(' AND ');
+    return bookmarkModel.search(ftsQuery);
+  }
+
   public updateBookmark(id: number, data: UpdateBookmarkDTO): Bookmark {
     return bookmarkModel.update(id, data);
   }

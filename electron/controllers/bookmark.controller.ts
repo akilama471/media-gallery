@@ -24,6 +24,16 @@ export function registerBookmarkController() {
     }
   });
 
+  ipcMain.handle('bookmarks:search', async (event, query: string) => {
+    try {
+      passwordService.checkAuth();
+      const bookmarks = bookmarkService.searchBookmarks(query);
+      return { success: true, data: bookmarks };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
   ipcMain.handle('bookmarks:update', async (event, id: number, data: UpdateBookmarkDTO) => {
     try {
       passwordService.checkAuth();

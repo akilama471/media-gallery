@@ -19,10 +19,18 @@ const App: React.FC = () => {
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [filteredTagBookmarkIds, setFilteredTagBookmarkIds] = useState<number[]>([]);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'title-asc' | 'title-desc'>('newest');
 
-  const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite, toggleImportant, updateBookmark } = useBookmarks();
+  const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite, toggleImportant, updateBookmark, refresh } = useBookmarks();
   const { domains, loading: domainsLoading } = useDomains();
   const { tags, loading: tagsLoading, createTag, renameTag, deleteTag, getBookmarkIds } = useTags();
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      refresh(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, refresh]);
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
@@ -51,15 +59,15 @@ const App: React.FC = () => {
     if (currentTab === 'important' && !b.is_important) return false;
     if (selectedDomain && b.domain_id !== selectedDomain.id) return false;
     if (selectedTag && !filteredTagBookmarkIds.includes(b.id)) return false;
-    if (searchQuery) {
-      const lowerQ = searchQuery.toLowerCase();
-      return (
-        (b.title?.toLowerCase().includes(lowerQ)) ||
-        (b.url.toLowerCase().includes(lowerQ)) ||
-        (b.description?.toLowerCase().includes(lowerQ))
-      );
-    }
     return true;
+  });
+
+  const sortedBookmarks = [...filteredBookmarks].sort((a, b) => {
+    if (sortOrder === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sortOrder === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (sortOrder === 'title-asc') return (a.title || a.url).localeCompare(b.title || b.url);
+    if (sortOrder === 'title-desc') return (b.title || b.url).localeCompare(a.title || a.url);
+    return 0;
   });
 
   return (
@@ -134,25 +142,39 @@ const App: React.FC = () => {
             </>
           ) : (
             <>
-              <div className="mb-6 flex items-center gap-4">
-                {(selectedDomain || selectedTag) && (
-                  <button 
-                    onClick={() => {
-                      if (selectedDomain) setSelectedDomain(null);
-                      if (selectedTag) setSelectedTag(null);
-                    }}
-                    className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    ← Back to {selectedDomain ? 'Domains' : 'Tags'}
-                  </button>
-                )}
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {(selectedDomain || selectedTag) && (
+                    <button 
+                      onClick={() => {
+                        if (selectedDomain) setSelectedDomain(null);
+                        if (selectedTag) setSelectedTag(null);
+                      }}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      ← Back to {selectedDomain ? 'Domains' : 'Tags'}
+                    </button>
+                  )}
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 capitalize">
+                      {selectedDomain ? selectedDomain.domain : (selectedTag ? `#${selectedTag.name}` : (currentTab === 'all' ? 'All Bookmarks' : currentTab))}
+                    </h2>
+                    <p className="text-gray-500">
+                      {sortedBookmarks.length} {sortedBookmarks.length === 1 ? 'bookmark' : 'bookmarks'} found
+                    </p>
+                  </div>
+                </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                    {selectedDomain ? selectedDomain.domain : (selectedTag ? `#${selectedTag.name}` : (currentTab === 'all' ? 'All Bookmarks' : currentTab))}
-                  </h2>
-                  <p className="text-gray-500">
-                    {filteredBookmarks.length} {filteredBookmarks.length === 1 ? 'bookmark' : 'bookmarks'} found
-                  </p>
+                  <select 
+                    value={sortOrder} 
+                    onChange={(e) => setSortOrder(e.target.value as any)}
+                    className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="title-asc">Title (A-Z)</option>
+                    <option value="title-desc">Title (Z-A)</option>
+                  </select>
                 </div>
               </div>
 
@@ -161,7 +183,7 @@ const App: React.FC = () => {
                   <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
                   <p>Loading your library...</p>
                 </div>
-              ) : filteredBookmarks.length === 0 ? (
+              ) : sortedBookmarks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                   <div className="bg-gray-100 p-6 rounded-full mb-4 text-gray-300">
                     <Search className="w-12 h-12" />
@@ -171,7 +193,7 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredBookmarks.map(bookmark => (
+                  {sortedBookmarks.map(bookmark => (
                     <BookmarkCard 
                       key={bookmark.id} 
                       bookmark={bookmark} 

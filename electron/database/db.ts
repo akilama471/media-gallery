@@ -117,6 +117,35 @@ export class DbManager {
           CREATE INDEX idx_bookmarks_domain_id ON bookmarks(domain_id);
           CREATE INDEX idx_domains_domain ON domains(domain);
         `,
+      },
+      {
+        version: 2,
+        up: `
+          CREATE VIRTUAL TABLE bookmarks_fts USING fts5(
+            title, url, description, notes,
+            content='bookmarks', content_rowid='id'
+          );
+
+          CREATE TRIGGER bookmarks_ai AFTER INSERT ON bookmarks BEGIN
+            INSERT INTO bookmarks_fts(rowid, title, url, description, notes)
+            VALUES (new.id, new.title, new.url, new.description, new.notes);
+          END;
+
+          CREATE TRIGGER bookmarks_ad AFTER DELETE ON bookmarks BEGIN
+            INSERT INTO bookmarks_fts(bookmarks_fts, rowid, title, url, description, notes)
+            VALUES ('delete', old.id, old.title, old.url, old.description, old.notes);
+          END;
+
+          CREATE TRIGGER bookmarks_au AFTER UPDATE ON bookmarks BEGIN
+            INSERT INTO bookmarks_fts(bookmarks_fts, rowid, title, url, description, notes)
+            VALUES ('delete', old.id, old.title, old.url, old.description, old.notes);
+            INSERT INTO bookmarks_fts(rowid, title, url, description, notes)
+            VALUES (new.id, new.title, new.url, new.description, new.notes);
+          END;
+
+          INSERT INTO bookmarks_fts(rowid, title, url, description, notes)
+          SELECT id, title, url, description, notes FROM bookmarks;
+        `,
       }
     ];
 

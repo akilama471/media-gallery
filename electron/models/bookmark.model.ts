@@ -87,6 +87,17 @@ export class BookmarkModel {
     return rows.map((row: any) => this.mapRow(row));
   }
 
+  public search(query: string): Bookmark[] {
+    const db = dbManager.getDb();
+    const rows = db.prepare(`
+      SELECT b.* FROM bookmarks b
+      JOIN bookmarks_fts fts ON b.id = fts.rowid
+      WHERE bookmarks_fts MATCH ?
+      ORDER BY rank
+    `).all(query);
+    return rows.map((row: any) => this.mapRow(row));
+  }
+
   private mapRow(row: any): Bookmark {
     return {
       ...row,

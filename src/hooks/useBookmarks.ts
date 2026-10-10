@@ -6,12 +6,20 @@ export function useBookmarks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBookmarks = useCallback(async () => {
+  const fetchBookmarks = useCallback(async (query?: string) => {
     try {
       setLoading(true);
       setError(null);
-      // @ts-ignore
-      const result = await window.electronAPI.bookmarks.getAll();
+      
+      let result;
+      if (query && query.trim().length > 0) {
+        // @ts-ignore
+        result = await window.electronAPI.bookmarks.search(query);
+      } else {
+        // @ts-ignore
+        result = await window.electronAPI.bookmarks.getAll();
+      }
+
       if (result.success) {
         setBookmarks(result.data);
       } else {

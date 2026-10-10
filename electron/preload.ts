@@ -6,6 +6,7 @@ export const electronAPI = {
   bookmarks: {
     add: (url: string) => ipcRenderer.invoke('bookmarks:add', url),
     getAll: () => ipcRenderer.invoke('bookmarks:getAll'),
+    search: (query: string) => ipcRenderer.invoke('bookmarks:search', query),
     update: (id: number, data: any) => ipcRenderer.invoke('bookmarks:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('bookmarks:delete', id)
   },

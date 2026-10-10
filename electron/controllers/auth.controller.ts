@@ -6,18 +6,18 @@ export function registerAuthController() {
     return passwordService.hasPasswordSet();
   });
 
-  ipcMain.handle('auth:setPassword', (event, password: string) => {
+  ipcMain.handle('auth:setPassword', async (event, password: string) => {
     try {
-      passwordService.setPassword(password);
+      await passwordService.setPassword(password);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   });
 
-  ipcMain.handle('auth:verifyPassword', (event, password: string) => {
+  ipcMain.handle('auth:verifyPassword', async (event, password: string) => {
     try {
-      const success = passwordService.verifyPassword(password);
+      const success = await passwordService.verifyPassword(password);
       return { success };
     } catch (error: any) {
       return { success: false, error: error.message };

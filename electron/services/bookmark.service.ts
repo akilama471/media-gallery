@@ -56,8 +56,15 @@ export class BookmarkService {
   }
 
   public searchBookmarks(query: string): Bookmark[] {
+    // Sanitize query to prevent FTS5 syntax errors (remove double quotes)
+    const sanitizedQuery = query.replace(/"/g, '').trim();
+    
+    if (!sanitizedQuery) {
+      return [];
+    }
+
     // Add wildcards for partial matching in FTS5
-    const ftsQuery = query.trim().split(/\s+/).map(word => `"${word}"*`).join(' AND ');
+    const ftsQuery = sanitizedQuery.split(/\s+/).map(word => `"${word}"*`).join(' AND ');
     return bookmarkModel.search(ftsQuery);
   }
 

@@ -81,10 +81,19 @@ app.whenReady().then(() => {
   }
 
   // Register custom protocol for local assets
-  protocol.handle('asset', (request) => {
+  protocol.handle('asset', async (request) => {
     // request.url is something like asset://thumb_abcd123.webp
-    const filename = request.url.slice('asset://'.length);
-    const assetPath = path.join(app.getPath('userData'), 'assets', filename);
+    const urlFilename = request.url.slice('asset://'.length);
+    // Use path.basename to prevent path traversal
+    const filename = path.basename(decodeURIComponent(urlFilename));
+    
+    const assetsDir = path.join(app.getPath('userData'), 'assets');
+    const assetPath = path.resolve(assetsDir, filename);
+    
+    // Ensure the resolved path is within the assets directory
+    if (!assetPath.startsWith(assetsDir)) {
+      return new Response(null, { status: 403 });
+    }
     
     // Check if file exists, if not, return 404
     if (!fs.existsSync(assetPath)) {
@@ -92,7 +101,7 @@ app.whenReady().then(() => {
     }
     
     // Return file with image/webp content type since .bdi is not a known image extension
-    const data = fs.readFileSync(assetPath);
+    const data = await fs.promises.readFile(assetPath);
     return new Response(data, {
       headers: {
         'Content-Type': 'image/webp'

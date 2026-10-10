@@ -179,13 +179,20 @@ export class BrowserImportService {
       };
       
       let importedCount = 0;
-      db.transaction(() => {
-        for (const b of bookmarks) {
-          const domainId = getDomainIdSync(b.url);
-          const info = insert.run(b.url, b.title, domainId);
-          if (info.changes > 0) importedCount++;
-        }
-      })();
+      const CHUNK_SIZE = 100;
+      
+      for (let i = 0; i < bookmarks.length; i += CHUNK_SIZE) {
+        const chunk = bookmarks.slice(i, i + CHUNK_SIZE);
+        db.transaction(() => {
+          for (const b of chunk) {
+            const domainId = getDomainIdSync(b.url);
+            const info = insert.run(b.url, b.title, domainId);
+            if (info.changes > 0) importedCount++;
+          }
+        })();
+        // Yield to event loop to prevent UI blocking
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
       return importedCount;
     }
 

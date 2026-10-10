@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
 import { app, net } from 'electron';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
@@ -36,7 +37,10 @@ export class AssetService {
    */
   public async downloadImage(url: string, prefix: string = 'img', sourceUrl?: string): Promise<string | null> {
     try {
-      const buffer = await new Promise<Buffer>((resolve, reject) => {
+      const filename = this.generateFilename(prefix, '.bdi');
+      const fullPath = path.join(this.assetsDir, filename);
+
+      await new Promise<void>((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
         const headers: Record<string, string> = {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 BookmarkManager/1.0',
@@ -46,12 +50,16 @@ export class AssetService {
           headers['Referer'] = sourceUrl;
         }
 
-        const makeRequest = (targetUrl: string) => {
+        const makeRequest = (targetUrl: string, redirectCount: number = 0) => {
+          if (redirectCount > 5) {
+            reject(new Error('Too many redirects'));
+            return;
+          }
           const req = client.get(targetUrl, { headers }, (res) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               // Handle redirect
               const redirectUrl = res.headers.location.startsWith('http') ? res.headers.location : new URL(res.headers.location, targetUrl).href;
-              makeRequest(redirectUrl);
+              makeRequest(redirectUrl, redirectCount + 1);
               return;
             }
             
@@ -60,9 +68,33 @@ export class AssetService {
               return;
             }
 
-            const chunks: Buffer[] = [];
-            res.on('data', (chunk) => chunks.push(chunk));
-            res.on('end', () => resolve(Buffer.concat(chunks)));
+            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+            let downloadedBytes = 0;
+
+            res.on('data', (chunk) => {
+              downloadedBytes += chunk.length;
+              if (downloadedBytes > MAX_SIZE) {
+                req.destroy(new Error('File size exceeds 5MB limit'));
+              }
+            });
+
+            const transform = sharp()
+              .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+              .webp({ quality: 80 });
+
+            const outStream = createWriteStream(fullPath);
+
+            res.pipe(transform).pipe(outStream);
+
+            outStream.on('finish', () => resolve());
+            outStream.on('error', (err) => {
+              req.destroy();
+              reject(err);
+            });
+            transform.on('error', (err) => {
+              req.destroy();
+              reject(err);
+            });
           });
           
           req.on('error', reject);
@@ -75,16 +107,6 @@ export class AssetService {
         makeRequest(url);
       });
 
-      // Use sharp to normalize the image and potentially strip malicious data
-      const processedBuffer = await sharp(buffer)
-        .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toBuffer();
-
-      const filename = this.generateFilename(prefix, '.bdi');
-      const fullPath = path.join(this.assetsDir, filename);
-
-      await fs.writeFile(fullPath, processedBuffer);
       return filename; // Return relative filename
     } catch (error) {
       console.warn(`Failed to download image from ${url}:`, error);

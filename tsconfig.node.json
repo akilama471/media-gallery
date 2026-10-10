@@ -11,9 +11,8 @@
     "composite": true,
     "emitDeclarationOnly": true,
     "strict": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["electron", "vite.config.ts", "src/types/**/*"]

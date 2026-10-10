@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import Database from 'better-sqlite3';
+const dbName = ['better', 'sqlite3'].join('-');
+const Database = require(dbName);
 import { dbManager } from '../database/db';
 import { domainModel } from '../models/domain.model';
 

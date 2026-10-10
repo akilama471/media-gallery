@@ -1,10 +1,12 @@
-import Database from 'better-sqlite3';
+import type { Database as DatabaseType } from 'better-sqlite3';
+const dbName = ['better', 'sqlite3'].join('-');
+const Database = require(dbName);
 import path from 'node:path';
 import { app } from 'electron';
 import fs from 'node:fs';
 
 export class DbManager {
-  private db: Database.Database | null = null;
+  private db: DatabaseType | null = null;
   private readonly dbPath: string;
 
   constructor() {
@@ -16,8 +18,8 @@ export class DbManager {
   private init() {
     try {
       this.db = new Database(this.dbPath);
-      this.db.pragma('journal_mode = WAL');
-      this.db.pragma('foreign_keys = ON');
+      this.db!.pragma('journal_mode = WAL');
+      this.db!.pragma('foreign_keys = ON');
       console.log(`Database initialized at: ${this.dbPath}`);
       this.runMigrations();
     } catch (error) {
@@ -26,7 +28,7 @@ export class DbManager {
     }
   }
 
-  public getDb(): Database.Database {
+  public getDb(): DatabaseType {
     if (!this.db) {
       throw new Error('Database is not initialized');
     }

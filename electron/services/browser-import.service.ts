@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import Database from 'better-sqlite3';
 import { dbManager } from '../database/db';
+import { domainModel } from '../models/domain.model';
 
 export type SupportedBrowser = 'chrome' | 'edge' | 'opera' | 'firefox' | 'yandex';
 
@@ -154,15 +155,34 @@ export class BrowserImportService {
     if (bookmarks.length > 0) {
       const db = dbManager.getDb();
       const insert = db.prepare(`
-        INSERT INTO bookmarks (url, title, domain_id) 
-        VALUES (?, ?, NULL)
+        INSERT INTO bookmarks (url, title, domain_id, thumbnail_path) 
+        VALUES (?, ?, ?, 'pending')
         ON CONFLICT(url) DO NOTHING
       `);
+      
+      const domainCache = new Map<string, number>();
+      
+      const getDomainIdSync = (urlStr: string): number | null => {
+        try {
+          const hostname = new URL(urlStr).hostname;
+          if (domainCache.has(hostname)) return domainCache.get(hostname)!;
+          
+          let domain = domainModel.findByDomain(hostname);
+          if (!domain) {
+             domain = domainModel.create(hostname, null);
+          }
+          domainCache.set(hostname, domain.id);
+          return domain.id;
+        } catch {
+          return null;
+        }
+      };
       
       let importedCount = 0;
       db.transaction(() => {
         for (const b of bookmarks) {
-          const info = insert.run(b.url, b.title);
+          const domainId = getDomainIdSync(b.url);
+          const info = insert.run(b.url, b.title, domainId);
           if (info.changes > 0) importedCount++;
         }
       })();

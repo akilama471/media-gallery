@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyRound, Check, AlertCircle, Download, Upload, Globe } from 'lucide-react';
+import { KeyRound, Check, AlertCircle, Download, Upload, Globe, Trash2 } from 'lucide-react';
 import { BrowserImportModal } from './BrowserImportModal';
 
 interface SettingsViewProps {
@@ -12,7 +12,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPa
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [backupStatus, setBackupStatus] = useState<{ type: 'export' | 'import', status: 'loading' | 'success' | 'error', message?: string } | null>(null);
+  const [backupStatus, setBackupStatus] = useState<{ type: 'export' | 'import' | 'wipe', status: 'loading' | 'success' | 'error', message?: string } | null>(null);
   const [showBrowserImport, setShowBrowserImport] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,6 +63,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPa
       }
     } catch (err: any) {
       setBackupStatus({ type: 'import', status: 'error', message: err.message });
+    }
+  };
+
+  const handleWipeData = async () => {
+    try {
+      setBackupStatus({ type: 'wipe', status: 'loading' });
+      // @ts-ignore
+      const res = await window.electronAPI.backup.wipeData();
+      if (res.success) {
+        setBackupStatus({ type: 'wipe', status: 'success', message: 'All data has been permanently deleted. Reloading...' });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else if (res.canceled) {
+        setBackupStatus(null);
+      } else {
+        setBackupStatus({ type: 'wipe', status: 'error', message: res.error || 'Failed to wipe data.' });
+      }
+    } catch (err: any) {
+      setBackupStatus({ type: 'wipe', status: 'error', message: err.message });
     }
   };
 
@@ -203,6 +223,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPa
         <p className="text-xs text-gray-400 mt-4 text-center">
           Warning: Importing a backup will overwrite your current data and restart the application.
         </p>
+      </div>
+
+      <div className="bg-red-50 p-8 rounded-2xl shadow-sm border border-red-200">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-red-100 text-red-600 rounded-lg">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-red-900">Danger Zone</h2>
+            <p className="text-red-700 text-sm">Permanently delete all bookmarks, collections, tags, and cached images.</p>
+          </div>
+        </div>
+        
+        <button
+          onClick={handleWipeData}
+          disabled={backupStatus?.status === 'loading'}
+          className="flex items-center justify-center gap-2 bg-white border-2 border-red-300 text-red-700 font-medium px-6 py-4 rounded-xl hover:bg-red-100 transition-colors w-full sm:w-auto disabled:opacity-50"
+        >
+          <Trash2 className="w-5 h-5" />
+          Wipe All Data
+        </button>
       </div>
       
       {showBrowserImport && (

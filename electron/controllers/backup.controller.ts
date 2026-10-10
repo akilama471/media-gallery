@@ -50,4 +50,25 @@ export function registerBackupController() {
       return { success: false, error: error.message };
     }
   });
+
+  ipcMain.handle('backup:wipeData', async (event) => {
+    try {
+      passwordService.checkAuth();
+      const result = await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Wipe All Data?',
+        message: 'This will permanently delete all bookmarks, tags, collections, domains, and cached images. This action cannot be undone. Are you sure you want to wipe all data?',
+        buttons: ['Cancel', 'Yes, Delete Everything'],
+        defaultId: 0,
+        cancelId: 0
+      });
+
+      if (result.response === 0) return { success: false, canceled: true };
+
+      await backupService.wipeAllData();
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
 }

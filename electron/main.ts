@@ -6,6 +6,7 @@ import { registerDomainController } from './controllers/domain.controller';
 import { registerTagController } from './controllers/tag.controller';
 import { registerCollectionController } from './controllers/collection.controller';
 import { registerBrowserImportController } from './controllers/browser-import.controller';
+import { enrichmentService } from './services/enrichment.service';
 import { protocol } from 'electron';
 import fs from 'node:fs';
 import { registerAuthController } from './controllers/auth.controller';
@@ -103,6 +104,9 @@ app.whenReady().then(() => {
   registerCollectionController();
   registerBrowserImportController();
   registerBackupController();
+  
+  // Start background jobs
+  enrichmentService.startEnrichmentJob();
   
   createWindow();
 });

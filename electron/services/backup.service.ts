@@ -102,6 +102,40 @@ export class BackupService {
       throw error;
     }
   }
+
+  /**
+   * Wipes all user data including database records and assets, but keeps settings (passwords).
+   */
+  public async wipeAllData(): Promise<boolean> {
+    try {
+      const userDataPath = app.getPath('userData');
+      const assetsPath = path.join(userDataPath, 'assets');
+      
+      // 1. Delete all assets (cached images, favicons, thumbnails)
+      if (fs.existsSync(assetsPath)) {
+        fs.rmSync(assetsPath, { recursive: true, force: true });
+      }
+      fs.mkdirSync(assetsPath);
+
+      // 2. Clear Database Records
+      const db = dbManager.getDb();
+      db.transaction(() => {
+        db.exec(`
+          DELETE FROM bookmark_collections;
+          DELETE FROM bookmark_tags;
+          DELETE FROM bookmarks;
+          DELETE FROM collections;
+          DELETE FROM tags;
+          DELETE FROM domains;
+        `);
+      })();
+      
+      return true;
+    } catch (error) {
+      console.error('Wipe data failed:', error);
+      throw error;
+    }
+  }
 }
 
 export const backupService = new BackupService();

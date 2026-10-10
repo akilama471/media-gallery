@@ -1,15 +1,17 @@
 import React from 'react';
 import { Bookmark as BookmarkModel } from '../../types/models';
-import { ExternalLink, Star, Trash2 } from 'lucide-react';
+import { ExternalLink, Star, Trash2, Flag, Edit2 } from 'lucide-react';
 import clsx from 'clsx';
 
 interface BookmarkCardProps {
   bookmark: BookmarkModel;
   onDelete: (id: number) => void;
   onToggleFavorite: (id: number, current: boolean) => void;
+  onToggleImportant: (id: number, current: boolean) => void;
+  onEdit: (bookmark: BookmarkModel) => void;
 }
 
-export const BookmarkCard: React.FC<BookmarkCardProps> = ({ bookmark, onDelete, onToggleFavorite }) => {
+export const BookmarkCard: React.FC<BookmarkCardProps> = ({ bookmark, onDelete, onToggleFavorite, onToggleImportant, onEdit }) => {
   
   // Use custom asset:// protocol for local images or fallback to placeholder
   const imageUrl = bookmark.thumbnail_path 
@@ -24,15 +26,28 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({ bookmark, onDelete, 
           alt={bookmark.title || 'Bookmark'} 
           className="w-full h-full object-cover transition-transform group-hover:scale-105"
         />
-        <button 
-          onClick={() => onToggleFavorite(bookmark.id, bookmark.is_favorite)}
-          className={clsx(
-            "absolute top-2 right-2 p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-colors",
-            bookmark.is_favorite ? "text-yellow-500" : "text-gray-400"
-          )}
-        >
-          <Star className="w-4 h-4" fill={bookmark.is_favorite ? "currentColor" : "none"} />
-        </button>
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          <button 
+            onClick={() => onToggleImportant(bookmark.id, bookmark.is_important)}
+            className={clsx(
+              "p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-colors",
+              bookmark.is_important ? "text-red-500" : "text-gray-400"
+            )}
+            title="Mark as Important"
+          >
+            <Flag className="w-4 h-4" fill={bookmark.is_important ? "currentColor" : "none"} />
+          </button>
+          <button 
+            onClick={() => onToggleFavorite(bookmark.id, bookmark.is_favorite)}
+            className={clsx(
+              "p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-colors",
+              bookmark.is_favorite ? "text-yellow-500" : "text-gray-400"
+            )}
+            title="Favorite"
+          >
+            <Star className="w-4 h-4" fill={bookmark.is_favorite ? "currentColor" : "none"} />
+          </button>
+        </div>
       </div>
       
       <div className="p-4 flex flex-col flex-1">
@@ -54,13 +69,22 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({ bookmark, onDelete, 
             Visit Site
           </a>
           
-          <button 
-            onClick={() => onDelete(bookmark.id)}
-            className="text-gray-400 hover:text-red-600 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => onEdit(bookmark)}
+              className="text-gray-400 hover:text-blue-600 transition-colors"
+              title="Edit Details"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => onDelete(bookmark.id)}
+              className="text-gray-400 hover:text-red-600 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

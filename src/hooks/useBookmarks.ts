@@ -52,17 +52,23 @@ export function useBookmarks() {
     }
   };
 
-  const toggleFavorite = async (id: number, currentStatus: boolean) => {
-     try {
-       // @ts-ignore
-      const result = await window.electronAPI.bookmarks.update(id, { is_favorite: !currentStatus });
+  const updateBookmark = async (id: number, data: Partial<Bookmark>) => {
+    try {
+      // @ts-ignore
+      const result = await window.electronAPI.bookmarks.update(id, data);
       if (result.success) {
-         setBookmarks((prev) => prev.map(b => b.id === id ? { ...b, is_favorite: !currentStatus } : b));
+        setBookmarks((prev) => prev.map(b => b.id === id ? { ...b, ...data } : b));
+        return { success: true };
       }
-     } catch (err) {
-       console.error(err);
-     }
+      return { success: false, error: result.error };
+    } catch (err: any) {
+      console.error(err);
+      return { success: false, error: err.message };
+    }
   };
+
+  const toggleFavorite = (id: number, currentStatus: boolean) => updateBookmark(id, { is_favorite: !currentStatus });
+  const toggleImportant = (id: number, currentStatus: boolean) => updateBookmark(id, { is_important: !currentStatus });
 
   useEffect(() => {
     fetchBookmarks();
@@ -74,7 +80,9 @@ export function useBookmarks() {
     error,
     addBookmark,
     deleteBookmark,
+    updateBookmark,
     toggleFavorite,
+    toggleImportant,
     refresh: fetchBookmarks
   };
 }

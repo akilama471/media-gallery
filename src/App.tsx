@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Sidebar } from './components/ui/Sidebar';
 import { BookmarkCard } from './components/bookmarks/BookmarkCard';
+import { BookmarkDetailsModal } from './components/bookmarks/BookmarkDetailsModal';
 import { useBookmarks } from './hooks/useBookmarks';
+import { Bookmark } from './types/models';
 import { Plus, Search, Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -9,8 +11,9 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
 
-  const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite } = useBookmarks();
+  const { bookmarks, loading, addBookmark, deleteBookmark, toggleFavorite, toggleImportant, updateBookmark } = useBookmarks();
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +27,7 @@ const App: React.FC = () => {
 
   const filteredBookmarks = bookmarks.filter(b => {
     if (currentTab === 'favorites' && !b.is_favorite) return false;
+    if (currentTab === 'important' && !b.is_important) return false;
     if (searchQuery) {
       const lowerQ = searchQuery.toLowerCase();
       return (
@@ -105,12 +109,22 @@ const App: React.FC = () => {
                   bookmark={bookmark} 
                   onDelete={deleteBookmark}
                   onToggleFavorite={toggleFavorite}
+                  onToggleImportant={toggleImportant}
+                  onEdit={setEditingBookmark}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      {editingBookmark && (
+        <BookmarkDetailsModal
+          bookmark={editingBookmark}
+          onClose={() => setEditingBookmark(null)}
+          onSave={updateBookmark}
+        />
+      )}
     </div>
   );
 };

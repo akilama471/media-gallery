@@ -16,8 +16,20 @@ export interface JobLog {
 
 class EnrichmentService {
   private isProcessing = false;
+  private shouldStop = false;
   private logs: JobLog[] = [];
   private logCounter = 0;
+
+  public stopEnrichmentJob() {
+    this.shouldStop = true;
+  }
+
+  public clearLogs() {
+    this.logs = [];
+    webContents.getAllWebContents().forEach(wc => {
+      wc.send('jobs:logs-updated');
+    });
+  }
 
   constructor() {
     ipcMain.handle('jobs:getEnrichmentLogs', () => {
@@ -59,9 +71,10 @@ class EnrichmentService {
   public async startEnrichmentJob() {
     if (this.isProcessing) return;
     this.isProcessing = true;
+    this.shouldStop = false;
 
     try {
-      while (true) {
+      while (!this.shouldStop) {
         // Fetch 5 bookmarks that have thumbnail_path='pending' (indicating they were freshly imported)
         const pendingBookmarks = dbManager.getDb().prepare(`
           SELECT id, url, title FROM bookmarks 
@@ -74,6 +87,7 @@ class EnrichmentService {
         }
 
         for (const bookmark of pendingBookmarks) {
+          if (this.shouldStop) break;
           try {
             const msg = `Enriching bookmark ${bookmark.id}...`;
             console.log(`[Enrichment Job] ${msg} : ${bookmark.url}`);
@@ -81,8 +95,10 @@ class EnrichmentService {
             
             // Wait 2 seconds before making network requests to avoid IP bans / Rate Limits
             await new Promise(resolve => setTimeout(resolve, 2000));
+            if (this.shouldStop) break;
 
             const metadata = await metadataService.extractMetadata(bookmark.url);
+            if (this.shouldStop) break;
             
             // Prefer original title if it's not "Untitled", else use metadata title
             const finalTitle = (bookmark.title && bookmark.title !== 'Untitled' && bookmark.title !== bookmark.url) ? bookmark.title : metadata.title;
@@ -94,10 +110,12 @@ class EnrichmentService {
 
             if (metadata.previewImageUrl) {
               previewPath = await assetService.downloadImage(metadata.previewImageUrl, 'prev', bookmark.url);
+              if (this.shouldStop) break;
               if (previewPath) {
                 thumbnailPath = await assetService.generateThumbnail(previewPath);
               }
             }
+            if (this.shouldStop) break;
 
             bookmarkModel.update(bookmark.id, {
               title: finalTitle,

@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { app } from 'electron';
 import { dbManager } from '../database/db';
+import { enrichmentService } from './enrichment.service';
 
 export class BackupService {
   /**
@@ -119,6 +120,9 @@ export class BackupService {
    */
   public async wipeAllData(): Promise<boolean> {
     try {
+      enrichmentService.stopEnrichmentJob();
+      enrichmentService.clearLogs();
+
       const userDataPath = app.getPath('userData');
       const assetsPath = path.join(userDataPath, 'assets');
       

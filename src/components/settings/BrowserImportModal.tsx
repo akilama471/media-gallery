@@ -66,7 +66,7 @@ export const BrowserImportModal: React.FC<BrowserImportModalProps> = ({ onClose,
       const res = await window.electronAPI.browserImport.extract(selectedBrowser, selectedProfilePath);
       if (res.success) {
         setBookmarks(res.data);
-        setSelectedUrls(new Set(res.data.map((b: any) => b.url)));
+        setSelectedUrls(new Set());
         setSearchQuery('');
         setStep(3);
       } else {

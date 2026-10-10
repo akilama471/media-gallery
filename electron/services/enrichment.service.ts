@@ -3,6 +3,7 @@ import { metadataService } from './metadata.service';
 import { domainService } from './domain.service';
 import { assetService } from './asset.service';
 import { dbManager } from '../database/db';
+import { webContents } from 'electron';
 
 class EnrichmentService {
   private isProcessing = false;
@@ -54,6 +55,11 @@ class EnrichmentService {
               domain_id: domain.id,
               preview_path: previewPath,
               thumbnail_path: thumbnailPath
+            });
+
+            // Notify frontend
+            webContents.getAllWebContents().forEach(wc => {
+              wc.send('bookmarks:updated');
             });
 
           } catch (error) {

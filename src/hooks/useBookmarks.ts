@@ -6,9 +6,9 @@ export function useBookmarks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBookmarks = useCallback(async (query?: string) => {
+  const fetchBookmarks = useCallback(async (query?: string, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       
       let result;
@@ -28,7 +28,7 @@ export function useBookmarks() {
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -80,6 +80,15 @@ export function useBookmarks() {
 
   useEffect(() => {
     fetchBookmarks();
+    
+    // @ts-ignore
+    const unsubscribe = window.electronAPI.events?.onBookmarksUpdated(() => {
+      fetchBookmarks(undefined, true);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [fetchBookmarks]);
 
   return {

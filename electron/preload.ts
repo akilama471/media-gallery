@@ -45,6 +45,13 @@ export const electronAPI = {
   browserImport: {
     getProfiles: (browser: string) => ipcRenderer.invoke('import:getProfiles', browser),
     execute: (browser: string, profilePath: string) => ipcRenderer.invoke('import:execute', browser, profilePath)
+  },
+  events: {
+    onBookmarksUpdated: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('bookmarks:updated', listener);
+      return () => ipcRenderer.removeListener('bookmarks:updated', listener);
+    }
   }
 };
 

@@ -91,9 +91,13 @@ app.whenReady().then(() => {
       return new Response(null, { status: 404 });
     }
     
-    // Return file
+    // Return file with image/webp content type since .bdi is not a known image extension
     const data = fs.readFileSync(assetPath);
-    return new Response(data);
+    return new Response(data, {
+      headers: {
+        'Content-Type': 'image/webp'
+      }
+    });
   });
 
   // Register IPC Controllers

@@ -81,7 +81,7 @@ export class AssetService {
         .webp({ quality: 80 })
         .toBuffer();
 
-      const filename = this.generateFilename(prefix, '.webp');
+      const filename = this.generateFilename(prefix, '.bdi');
       const fullPath = path.join(this.assetsDir, filename);
 
       await fs.writeFile(fullPath, processedBuffer);
@@ -100,7 +100,7 @@ export class AssetService {
       const sourcePath = path.join(this.assetsDir, sourceFilename);
       const sourceBuffer = await fs.readFile(sourcePath);
 
-      const thumbnailFilename = this.generateFilename('thumb', '.webp');
+      const thumbnailFilename = this.generateFilename('thumb', '.bdi');
       const thumbnailPath = path.join(this.assetsDir, thumbnailFilename);
 
       await sharp(sourceBuffer)

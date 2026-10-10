@@ -13,18 +13,33 @@ interface BookmarkCardProps {
 
 export const BookmarkCard: React.FC<BookmarkCardProps> = ({ bookmark, onDelete, onToggleFavorite, onToggleImportant, onEdit }) => {
   
-  // Use custom asset:// protocol for local images or fallback to placeholder
+  let hostname = '';
+  try {
+    hostname = new URL(bookmark.url).hostname;
+  } catch (e) {
+    // Ignore invalid urls
+  }
+
+  const fallbackUrl = hostname 
+    ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=128` 
+    : 'https://via.placeholder.com/300x200?text=No+Image';
+
   const imageUrl = bookmark.thumbnail_path 
     ? `asset://${bookmark.thumbnail_path}` 
-    : 'https://via.placeholder.com/300x200?text=No+Image';
+    : fallbackUrl;
+
+  const isFavicon = !bookmark.thumbnail_path;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
-      <div className="relative h-40 w-full bg-gray-100 overflow-hidden">
+      <div className="relative h-40 w-full bg-gray-100 flex items-center justify-center overflow-hidden">
         <img 
           src={imageUrl} 
           alt={bookmark.title || 'Bookmark'} 
-          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+          className={clsx(
+            "transition-transform group-hover:scale-105",
+            isFavicon ? "w-16 h-16 object-contain opacity-70" : "w-full h-full object-cover"
+          )}
         />
         <div className="absolute top-2 right-2 flex items-center gap-1">
           <button 

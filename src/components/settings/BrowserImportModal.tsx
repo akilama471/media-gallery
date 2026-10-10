@@ -21,11 +21,15 @@ const BROWSERS = [
 ];
 
 export const BrowserImportModal: React.FC<BrowserImportModalProps> = ({ onClose, onImportComplete }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedBrowser, setSelectedBrowser] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
   const [selectedProfilePath, setSelectedProfilePath] = useState<string | null>(null);
   
+  const [bookmarks, setBookmarks] = useState<{title: string, url: string}[]>([]);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importCount, setImportCount] = useState<number>(0);
@@ -53,16 +57,39 @@ export const BrowserImportModal: React.FC<BrowserImportModalProps> = ({ onClose,
     setLoading(false);
   };
 
-  const handleImport = async () => {
+  const handleExtract = async () => {
     if (!selectedBrowser || !selectedProfilePath) return;
     setLoading(true);
     setError(null);
     try {
       // @ts-ignore
-      const res = await window.electronAPI.browserImport.execute(selectedBrowser, selectedProfilePath);
+      const res = await window.electronAPI.browserImport.extract(selectedBrowser, selectedProfilePath);
+      if (res.success) {
+        setBookmarks(res.data);
+        setSelectedUrls(new Set(res.data.map((b: any) => b.url)));
+        setSearchQuery('');
+        setStep(3);
+      } else {
+        setError(res.error || 'Extract failed.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Extract failed.');
+    }
+    setLoading(false);
+  };
+
+  const handleImportSelected = async () => {
+    const bookmarksToImport = bookmarks.filter(b => selectedUrls.has(b.url));
+    if (bookmarksToImport.length === 0) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      // @ts-ignore
+      const res = await window.electronAPI.browserImport.execute(bookmarksToImport);
       if (res.success) {
         setImportCount(res.data);
-        setStep(3);
+        setStep(4);
         onImportComplete();
       } else {
         setError(res.error || 'Import failed.');
@@ -72,6 +99,11 @@ export const BrowserImportModal: React.FC<BrowserImportModalProps> = ({ onClose,
     }
     setLoading(false);
   };
+
+  const filteredBookmarks = bookmarks.filter(b => 
+    b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    b.url.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -149,18 +181,99 @@ export const BrowserImportModal: React.FC<BrowserImportModalProps> = ({ onClose,
                   Back
                 </button>
                 <button
-                  onClick={handleImport}
+                  onClick={handleExtract}
                   disabled={!selectedProfilePath || loading}
                   className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Import Now
+                  Continue
                 </button>
               </div>
             </div>
           )}
 
           {step === 3 && (
+            <div className="flex flex-col h-[60vh]">
+              <p className="text-gray-600 mb-2">Select bookmarks to import ({selectedUrls.size} selected of {bookmarks.length})</p>
+              
+              <input
+                type="text"
+                placeholder="Filter bookmarks by title or URL..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => {
+                    const newSet = new Set(selectedUrls);
+                    filteredBookmarks.forEach(b => newSet.add(b.url));
+                    setSelectedUrls(newSet);
+                  }}
+                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Select All Filtered
+                </button>
+                <button
+                  onClick={() => {
+                    const newSet = new Set(selectedUrls);
+                    filteredBookmarks.forEach(b => newSet.delete(b.url));
+                    setSelectedUrls(newSet);
+                  }}
+                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Deselect All Filtered
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 mb-4">
+                {filteredBookmarks.map(b => (
+                  <label key={b.url} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer transition-colors border-b border-gray-50 last:border-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedUrls.has(b.url)}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedUrls);
+                        if (e.target.checked) newSet.add(b.url);
+                        else newSet.delete(b.url);
+                        setSelectedUrls(newSet);
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    />
+                    <div className="overflow-hidden flex-1">
+                      <div className="text-sm font-medium text-gray-800 truncate" title={b.title}>{b.title}</div>
+                      <div className="text-xs text-gray-500 truncate" title={b.url}>{b.url}</div>
+                    </div>
+                  </label>
+                ))}
+                {filteredBookmarks.length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    No bookmarks match your search.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <button
+                  onClick={() => setStep(2)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleImportSelected}
+                  disabled={selectedUrls.size === 0 || loading}
+                  className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Import Selected
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8" />

@@ -41,7 +41,6 @@ export class AssetService {
       const fullPath = path.join(this.assetsDir, filename);
 
       await new Promise<void>((resolve, reject) => {
-        const client = url.startsWith('https') ? https : http;
         const headers: Record<string, string> = {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 BookmarkManager/1.0',
         };
@@ -55,7 +54,8 @@ export class AssetService {
             reject(new Error('Too many redirects'));
             return;
           }
-          const req = client.get(targetUrl, { headers }, (res) => {
+          const requestClient = targetUrl.startsWith('https') ? https : http;
+          const req = requestClient.get(targetUrl, { headers }, (res) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               // Handle redirect
               const redirectUrl = res.headers.location.startsWith('http') ? res.headers.location : new URL(res.headers.location, targetUrl).href;

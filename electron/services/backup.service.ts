@@ -26,8 +26,13 @@ export class BackupService {
         zip.addLocalFolder(assetsPath, 'assets');
       }
 
-      // Write ZIP securely
-      zip.writeZip(destinationPath);
+      // Write ZIP asynchronously to prevent UI freezing
+      await new Promise<void>((resolve, reject) => {
+        zip.writeZip(destinationPath, (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
       return true;
     } catch (error) {
       console.error('Backup export failed:', error);
@@ -60,11 +65,20 @@ export class BackupService {
       
       const tempExtractDir = path.join(userDataPath, 'temp_restore');
       if (fs.existsSync(tempExtractDir)) {
-         fs.rmSync(tempExtractDir, { recursive: true, force: true });
+         await fs.promises.rm(tempExtractDir, { recursive: true, force: true });
       }
-      fs.mkdirSync(tempExtractDir);
+      await fs.promises.mkdir(tempExtractDir);
 
-      zip.extractAllTo(tempExtractDir, true);
+      await new Promise<void>((resolve, reject) => {
+        // Handle different adm-zip type signatures gracefully
+        const cb = (error: any) => error ? reject(error) : resolve();
+        const anyZip = zip as any;
+        if (anyZip.extractAllToAsync.length === 3) {
+           anyZip.extractAllToAsync(tempExtractDir, true, cb);
+        } else {
+           anyZip.extractAllToAsync(tempExtractDir, true, false, cb);
+        }
+      });
 
       // Verify if temp_restore has the DB
       const tempDbPath = path.join(tempExtractDir, 'bookmark_manager.sqlite');
@@ -74,23 +88,20 @@ export class BackupService {
 
       // It's safe, now we swap
       // We must close the current DB connection first.
-      // (Normally better-sqlite3 doesn't have an explicit close if we just swap, 
-      // but it's safer to not hold file locks if possible). Let's assume we can just replace the file and reload.
-      
       dbManager.getDb().close();
 
-      fs.copyFileSync(tempDbPath, dbPath);
+      await fs.promises.copyFile(tempDbPath, dbPath);
       
       const tempAssetsPath = path.join(tempExtractDir, 'assets');
       if (fs.existsSync(tempAssetsPath)) {
         if (fs.existsSync(assetsPath)) {
-           fs.rmSync(assetsPath, { recursive: true, force: true });
+           await fs.promises.rm(assetsPath, { recursive: true, force: true });
         }
-        fs.renameSync(tempAssetsPath, assetsPath);
+        await fs.promises.rename(tempAssetsPath, assetsPath);
       }
 
       // Clean up temp
-      fs.rmSync(tempExtractDir, { recursive: true, force: true });
+      await fs.promises.rm(tempExtractDir, { recursive: true, force: true });
 
       // Restart app to reload database state properly
       app.relaunch();
@@ -114,14 +125,14 @@ export class BackupService {
       // 1. Delete all assets (cached images, favicons, thumbnails)
       if (fs.existsSync(assetsPath)) {
         try {
-          fs.rmSync(assetsPath, { recursive: true, force: true });
+          await fs.promises.rm(assetsPath, { recursive: true, force: true });
         } catch (e) {
           console.warn('Could not fully delete assets dir (file locked), ignoring.', e);
         }
       }
       
       if (!fs.existsSync(assetsPath)) {
-        fs.mkdirSync(assetsPath);
+        await fs.promises.mkdir(assetsPath);
       }
 
       // 2. Clear Database Records

@@ -14,10 +14,20 @@ export function registerBrowserImportController() {
     }
   });
 
-  ipcMain.handle('import:execute', async (event, browser: SupportedBrowser, profilePath: string) => {
+  ipcMain.handle('import:extract', async (event, browser: SupportedBrowser, profilePath: string) => {
     try {
       passwordService.checkAuth();
-      const count = await browserImportService.importFromProfile(browser, profilePath);
+      const bookmarks = browserImportService.extractBookmarks(browser, profilePath);
+      return { success: true, data: bookmarks };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('import:execute', async (event, bookmarks: { title: string; url: string }[]) => {
+    try {
+      passwordService.checkAuth();
+      const count = await browserImportService.importBookmarks(bookmarks);
       
       // Start background enrichment without awaiting it
       enrichmentService.startEnrichmentJob();

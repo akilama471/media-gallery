@@ -96,7 +96,7 @@ export class BrowserImportService {
     return profiles;
   }
 
-  public async importFromProfile(browser: SupportedBrowser, profilePath: string): Promise<number> {
+  public extractBookmarks(browser: SupportedBrowser, profilePath: string): { title: string; url: string }[] {
     if (!fs.existsSync(profilePath)) throw new Error('Profile path not found');
 
     const bookmarks: { title: string; url: string }[] = [];
@@ -111,14 +111,14 @@ export class BrowserImportService {
 
       try {
         const ffDb = new Database(tempDbPath, { readonly: true });
-        const rows = ffDb.prepare(`
+        const stmt = ffDb.prepare(`
           SELECT b.title, p.url 
           FROM moz_bookmarks b
           JOIN moz_places p ON b.fk = p.id
           WHERE b.type = 1 AND p.url LIKE 'http%'
-        `).all() as { title: string | null; url: string }[];
+        `);
         
-        for (const row of rows) {
+        for (const row of stmt.iterate() as IterableIterator<{ title: string | null; url: string }>) {
           if (row.url) {
             bookmarks.push({ title: row.title || 'Untitled', url: row.url });
           }
@@ -152,51 +152,53 @@ export class BrowserImportService {
       }
     }
 
-    if (bookmarks.length > 0) {
-      const db = dbManager.getDb();
-      const insert = db.prepare(`
-        INSERT INTO bookmarks (url, title, domain_id, thumbnail_path) 
-        VALUES (?, ?, ?, 'pending')
-        ON CONFLICT(url) DO NOTHING
-      `);
-      
-      const domainCache = new Map<string, number>();
-      
-      const getDomainIdSync = (urlStr: string): number | null => {
-        try {
-          const hostname = new URL(urlStr).hostname;
-          if (domainCache.has(hostname)) return domainCache.get(hostname)!;
-          
-          let domain = domainModel.findByDomain(hostname);
-          if (!domain) {
-             domain = domainModel.create(hostname, null);
-          }
-          domainCache.set(hostname, domain.id);
-          return domain.id;
-        } catch {
-          return null;
-        }
-      };
-      
-      let importedCount = 0;
-      const CHUNK_SIZE = 100;
-      
-      for (let i = 0; i < bookmarks.length; i += CHUNK_SIZE) {
-        const chunk = bookmarks.slice(i, i + CHUNK_SIZE);
-        db.transaction(() => {
-          for (const b of chunk) {
-            const domainId = getDomainIdSync(b.url);
-            const info = insert.run(b.url, b.title, domainId);
-            if (info.changes > 0) importedCount++;
-          }
-        })();
-        // Yield to event loop to prevent UI blocking
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-      return importedCount;
-    }
+    return bookmarks;
+  }
 
-    return 0;
+  public async importBookmarks(bookmarks: { title: string; url: string }[]): Promise<number> {
+    if (!bookmarks || bookmarks.length === 0) return 0;
+
+    const db = dbManager.getDb();
+    const insert = db.prepare(`
+      INSERT INTO bookmarks (url, title, domain_id, thumbnail_path) 
+      VALUES (?, ?, ?, 'pending')
+      ON CONFLICT(url) DO NOTHING
+    `);
+    
+    const domainCache = new Map<string, number>();
+    
+    const getDomainIdSync = (urlStr: string): number | null => {
+      try {
+        const hostname = new URL(urlStr).hostname;
+        if (domainCache.has(hostname)) return domainCache.get(hostname)!;
+        
+        let domain = domainModel.findByDomain(hostname);
+        if (!domain) {
+           domain = domainModel.create(hostname, null);
+        }
+        domainCache.set(hostname, domain.id);
+        return domain.id;
+      } catch {
+        return null;
+      }
+    };
+    
+    let importedCount = 0;
+    const CHUNK_SIZE = 100;
+    
+    for (let i = 0; i < bookmarks.length; i += CHUNK_SIZE) {
+      const chunk = bookmarks.slice(i, i + CHUNK_SIZE);
+      db.transaction(() => {
+        for (const b of chunk) {
+          const domainId = getDomainIdSync(b.url);
+          const info = insert.run(b.url, b.title, domainId);
+          if (info.changes > 0) importedCount++;
+        }
+      })();
+      // Yield to event loop to prevent UI blocking
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    return importedCount;
   }
 }
 

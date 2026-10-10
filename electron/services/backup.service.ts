@@ -113,9 +113,16 @@ export class BackupService {
       
       // 1. Delete all assets (cached images, favicons, thumbnails)
       if (fs.existsSync(assetsPath)) {
-        fs.rmSync(assetsPath, { recursive: true, force: true });
+        try {
+          fs.rmSync(assetsPath, { recursive: true, force: true });
+        } catch (e) {
+          console.warn('Could not fully delete assets dir (file locked), ignoring.', e);
+        }
       }
-      fs.mkdirSync(assetsPath);
+      
+      if (!fs.existsSync(assetsPath)) {
+        fs.mkdirSync(assetsPath);
+      }
 
       // 2. Clear Database Records
       const db = dbManager.getDb();

@@ -43,7 +43,7 @@ class EnrichmentService {
             let thumbnailPath: string | null = null;
 
             if (metadata.previewImageUrl) {
-              previewPath = await assetService.downloadImage(metadata.previewImageUrl, 'prev');
+              previewPath = await assetService.downloadImage(metadata.previewImageUrl, 'prev', bookmark.url);
               if (previewPath) {
                 thumbnailPath = await assetService.generateThumbnail(previewPath);
               }

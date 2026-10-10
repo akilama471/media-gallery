@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import { app, net } from 'electron';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
+import https from 'node:https';
+import http from 'node:http';
 
 export class AssetService {
   private readonly assetsDir: string;
@@ -32,18 +34,46 @@ export class AssetService {
    * Downloads an image from a URL and saves it to the local filesystem
    * Returns the relative path to the saved asset
    */
-  public async downloadImage(url: string, prefix: string = 'img'): Promise<string | null> {
+  public async downloadImage(url: string, prefix: string = 'img', sourceUrl?: string): Promise<string | null> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds limit for images
+      const buffer = await new Promise<Buffer>((resolve, reject) => {
+        const client = url.startsWith('https') ? https : http;
+        const headers: Record<string, string> = {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 BookmarkManager/1.0',
+        };
+        
+        if (sourceUrl) {
+          headers['Referer'] = sourceUrl;
+        }
 
-      const response = await net.fetch(url, { signal: controller.signal, cache: 'no-store' });
-      clearTimeout(timeoutId);
+        const makeRequest = (targetUrl: string) => {
+          const req = client.get(targetUrl, { headers }, (res) => {
+            if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              // Handle redirect
+              const redirectUrl = res.headers.location.startsWith('http') ? res.headers.location : new URL(res.headers.location, targetUrl).href;
+              makeRequest(redirectUrl);
+              return;
+            }
+            
+            if (!res.statusCode || res.statusCode >= 400) {
+              reject(new Error(`Status ${res.statusCode}`));
+              return;
+            }
 
-      if (!response.ok) return null;
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+          });
+          
+          req.on('error', reject);
+          req.setTimeout(15000, () => {
+            req.destroy();
+            reject(new Error('Timeout'));
+          });
+        };
 
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        makeRequest(url);
+      });
 
       // Use sharp to normalize the image and potentially strip malicious data
       const processedBuffer = await sharp(buffer)
@@ -68,10 +98,12 @@ export class AssetService {
   public async generateThumbnail(sourceFilename: string): Promise<string | null> {
     try {
       const sourcePath = path.join(this.assetsDir, sourceFilename);
+      const sourceBuffer = await fs.readFile(sourcePath);
+
       const thumbnailFilename = this.generateFilename('thumb', '.webp');
       const thumbnailPath = path.join(this.assetsDir, thumbnailFilename);
 
-      await sharp(sourcePath)
+      await sharp(sourceBuffer)
         .resize(300, 200, { fit: 'cover' })
         .webp({ quality: 70 })
         .toFile(thumbnailPath);

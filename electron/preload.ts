@@ -40,6 +40,10 @@ export const electronAPI = {
   backup: {
     export: () => ipcRenderer.invoke('backup:export'),
     import: () => ipcRenderer.invoke('backup:import')
+  },
+  browserImport: {
+    getProfiles: (browser: string) => ipcRenderer.invoke('import:getProfiles', browser),
+    execute: (browser: string, profilePath: string) => ipcRenderer.invoke('import:execute', browser, profilePath)
   }
 };
 

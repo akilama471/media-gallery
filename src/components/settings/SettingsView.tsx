@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { KeyRound, Check, AlertCircle, Download, Upload } from 'lucide-react';
+import { KeyRound, Check, AlertCircle, Download, Upload, Globe } from 'lucide-react';
+import { BrowserImportModal } from './BrowserImportModal';
 
 interface SettingsViewProps {
   hasPassword: boolean;
   onSetPassword: (password: string) => Promise<boolean>;
+  onRefreshBookmarks: () => Promise<void>;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPassword }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPassword, onRefreshBookmarks }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [backupStatus, setBackupStatus] = useState<{ type: 'export' | 'import', status: 'loading' | 'success' | 'error', message?: string } | null>(null);
+  const [showBrowserImport, setShowBrowserImport] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +138,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPa
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
         <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+            <Globe className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Browser Import</h2>
+            <p className="text-gray-500 text-sm">Import bookmarks directly from your web browsers.</p>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => setShowBrowserImport(true)}
+          className="flex items-center justify-center gap-2 bg-white border-2 border-blue-200 text-blue-700 font-medium px-6 py-4 rounded-xl hover:bg-blue-50 transition-colors w-full sm:w-auto"
+        >
+          <Globe className="w-5 h-5" />
+          Import from Browser
+        </button>
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+        <div className="flex items-center gap-3 mb-6">
           <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
             <Download className="w-6 h-6" />
           </div>
@@ -181,6 +204,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasPassword, onSetPa
           Warning: Importing a backup will overwrite your current data and restart the application.
         </p>
       </div>
+      
+      {showBrowserImport && (
+        <BrowserImportModal 
+          onClose={() => setShowBrowserImport(false)}
+          onImportComplete={() => {
+            onRefreshBookmarks();
+          }}
+        />
+      )}
     </div>
   );
 };

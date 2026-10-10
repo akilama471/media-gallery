@@ -1,0 +1,176 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import Database from 'better-sqlite3';
+import { dbManager } from '../database/db';
+
+export type SupportedBrowser = 'chrome' | 'edge' | 'opera' | 'firefox' | 'yandex';
+
+export interface BrowserProfile {
+  id: string;
+  name: string;
+  path: string;
+}
+
+export class BrowserImportService {
+  private getLocalDataPath(): string {
+    return process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  }
+
+  private getRoamingDataPath(): string {
+    return process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  }
+
+  private getBrowserDataDir(browser: SupportedBrowser): string | null {
+    const local = this.getLocalDataPath();
+    const roaming = this.getRoamingDataPath();
+
+    switch (browser) {
+      case 'chrome':
+        return path.join(local, 'Google', 'Chrome', 'User Data');
+      case 'edge':
+        return path.join(local, 'Microsoft', 'Edge', 'User Data');
+      case 'yandex':
+        return path.join(local, 'Yandex', 'YandexBrowser', 'User Data');
+      case 'opera':
+        return path.join(roaming, 'Opera Software', 'Opera Stable');
+      case 'firefox':
+        return path.join(roaming, 'Mozilla', 'Firefox', 'Profiles');
+      default:
+        return null;
+    }
+  }
+
+  public getProfiles(browser: SupportedBrowser): BrowserProfile[] {
+    const dataDir = this.getBrowserDataDir(browser);
+    if (!dataDir || !fs.existsSync(dataDir)) {
+      throw new Error('Browser data not found on this computer. Ensure the browser is installed.');
+    }
+
+    const profiles: BrowserProfile[] = [];
+
+    if (browser === 'firefox') {
+      const dirs = fs.readdirSync(dataDir, { withFileTypes: true });
+      for (const dir of dirs) {
+        if (dir.isDirectory()) {
+          const placesPath = path.join(dataDir, dir.name, 'places.sqlite');
+          if (fs.existsSync(placesPath)) {
+            profiles.push({
+              id: dir.name,
+              name: dir.name.includes('.') ? dir.name.split('.')[1] || dir.name : dir.name,
+              path: path.join(dataDir, dir.name)
+            });
+          }
+        }
+      }
+    } else if (browser === 'opera') {
+      const bookmarksPath = path.join(dataDir, 'Bookmarks');
+      if (fs.existsSync(bookmarksPath)) {
+        profiles.push({
+          id: 'default',
+          name: 'Default Profile',
+          path: dataDir
+        });
+      }
+    } else {
+      const dirs = fs.readdirSync(dataDir, { withFileTypes: true });
+      for (const dir of dirs) {
+        if (dir.isDirectory() && (dir.name === 'Default' || dir.name.startsWith('Profile '))) {
+          const bookmarksPath = path.join(dataDir, dir.name, 'Bookmarks');
+          if (fs.existsSync(bookmarksPath)) {
+            profiles.push({
+              id: dir.name,
+              name: dir.name === 'Default' ? 'Default Profile' : dir.name,
+              path: path.join(dataDir, dir.name)
+            });
+          }
+        }
+      }
+    }
+
+    if (profiles.length === 0) {
+      throw new Error('No profiles with bookmarks found for this browser.');
+    }
+
+    return profiles;
+  }
+
+  public async importFromProfile(browser: SupportedBrowser, profilePath: string): Promise<number> {
+    if (!fs.existsSync(profilePath)) throw new Error('Profile path not found');
+
+    const bookmarks: { title: string; url: string }[] = [];
+
+    if (browser === 'firefox') {
+      const placesPath = path.join(profilePath, 'places.sqlite');
+      if (!fs.existsSync(placesPath)) throw new Error('places.sqlite not found');
+
+      // Copy to temp to avoid DB locks
+      const tempDbPath = path.join(os.tmpdir(), `temp_places_${Date.now()}.sqlite`);
+      fs.copyFileSync(placesPath, tempDbPath);
+
+      try {
+        const ffDb = new Database(tempDbPath, { readonly: true });
+        const rows = ffDb.prepare(`
+          SELECT b.title, p.url 
+          FROM moz_bookmarks b
+          JOIN moz_places p ON b.fk = p.id
+          WHERE b.type = 1 AND p.url LIKE 'http%'
+        `).all() as { title: string | null; url: string }[];
+        
+        for (const row of rows) {
+          if (row.url) {
+            bookmarks.push({ title: row.title || 'Untitled', url: row.url });
+          }
+        }
+        ffDb.close();
+      } finally {
+        if (fs.existsSync(tempDbPath)) fs.unlinkSync(tempDbPath);
+      }
+    } else {
+      // Chromium based JSON
+      const bookmarksPath = path.join(profilePath, 'Bookmarks');
+      if (!fs.existsSync(bookmarksPath)) throw new Error('Bookmarks file not found');
+
+      const data = JSON.parse(fs.readFileSync(bookmarksPath, 'utf8'));
+      
+      const traverse = (node: any) => {
+        if (!node) return;
+        if (node.type === 'url' && node.url && node.url.startsWith('http')) {
+          bookmarks.push({ title: node.name || 'Untitled', url: node.url });
+        } else if (node.type === 'folder' && node.children) {
+          for (const child of node.children) {
+            traverse(child);
+          }
+        }
+      };
+
+      if (data.roots) {
+        if (data.roots.bookmark_bar) traverse(data.roots.bookmark_bar);
+        if (data.roots.other) traverse(data.roots.other);
+        if (data.roots.synced) traverse(data.roots.synced);
+      }
+    }
+
+    if (bookmarks.length > 0) {
+      const db = dbManager.getDb();
+      const insert = db.prepare(`
+        INSERT INTO bookmarks (url, title, domain_id) 
+        VALUES (?, ?, NULL)
+        ON CONFLICT(url) DO NOTHING
+      `);
+      
+      let importedCount = 0;
+      db.transaction(() => {
+        for (const b of bookmarks) {
+          const info = insert.run(b.url, b.title);
+          if (info.changes > 0) importedCount++;
+        }
+      })();
+      return importedCount;
+    }
+
+    return 0;
+  }
+}
+
+export const browserImportService = new BrowserImportService();

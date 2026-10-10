@@ -189,7 +189,8 @@ const App: React.FC = () => {
           ) : currentTab === 'settings' ? (
             <SettingsView 
               hasPassword={hasPassword} 
-              onSetPassword={setPassword} 
+              onSetPassword={setPassword}
+              onRefreshBookmarks={refresh}
             />
           ) : (
             <>
